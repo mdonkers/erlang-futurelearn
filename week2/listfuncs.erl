@@ -34,8 +34,11 @@ double([X|Xs]) ->
 
 evens([]) ->
   [];
-evens([X|Xs]) when X rem 2 == 0 ->
-    [X|evens(Xs)];
-evens([_|Xs]) ->
-    evens(Xs).
+evens([X|Xs]) ->
+  case X rem 2 of
+    0 ->
+      [X|evens(Xs)];
+    _ ->
+      evens(Xs)
+  end.
 
