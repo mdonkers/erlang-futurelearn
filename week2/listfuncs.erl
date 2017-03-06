@@ -9,7 +9,7 @@
 -module(listfuncs).
 
 %% Application callbacks
--export([product/1,listmax/1,double/1,evens/1]).
+-export([product/1,listmax/1,double/1,evens/1,nub/1]).
 
 product(Xs) ->
   product(Xs, 1).
@@ -42,3 +42,15 @@ evens([X|Xs]) ->
       evens(Xs)
   end.
 
+nub(Xs) ->
+  nub(Xs, []).
+
+nub([], L) ->
+  lists:reverse(L);
+nub([X|Xs], L) ->
+  case lists:member(X, L) of
+    true ->
+      nub(Xs, L);
+    _ ->
+      nub(Xs, [X|L])
+  end.
