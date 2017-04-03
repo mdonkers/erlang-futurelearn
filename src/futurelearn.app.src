@@ -1,0 +1,14 @@
+{application, futurelearn,
+ [
+  {description, "An Erlang futurelearn library"},
+  {vsn, "1"},
+  {modules, [
+             futurelearn
+            ]},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, []}
+ ]}.
