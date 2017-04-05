@@ -22,7 +22,9 @@
          %% test case names go here
          doubleAll_test/1,
          evens_test/1,
-         product_test/1
+         product_test/1,
+         zip_test/1,
+         zip_with_test/1
         ]).
 
 
@@ -31,7 +33,9 @@ all() ->
      %% Group names here e.g. {group, crud}
      doubleAll_test,
      evens_test,
-     product_test
+     product_test,
+     zip_test,
+     zip_with_test
     ].
 
 %%%===================================================================
@@ -46,3 +50,9 @@ evens_test(_Config) ->
 
 product_test(_Config) ->
   ?assertEqual(higherorder:product([1,2,3,4]), 24).
+
+zip_test(_Config) ->
+  ?assertEqual(higherorder:zip([1,2,3,4], [1,2]), [ {1,1}, {2,2} ]).
+
+zip_with_test(_Config) ->
+  ?assertEqual(higherorder:zip_with(fun(X,Y) -> X+Y end, [1,3,5,7], [2,4]), [ 3, 7 ]).
