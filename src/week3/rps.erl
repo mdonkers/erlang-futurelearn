@@ -137,7 +137,12 @@ const(Play) ->
     dummy.
 
 cycle(Xs) ->
-    dummy.
+  M = length(Xs) rem 3,
+  case M of
+    0 -> rock;
+    1 -> paper;
+    2 -> scissors
+  end.
 
 rand(_) ->
     enum(rand:uniform(3) - 1).
