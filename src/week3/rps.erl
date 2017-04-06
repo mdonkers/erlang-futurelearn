@@ -1,5 +1,5 @@
 -module(rps).
--export([play/1,echo/1,play_two/3,rock/1,no_repeat/1,const/1,enum/1,cycle/1,rand/1,val/1,tournament/2]).
+-export([play/1,echo/1,play_two/3,rock/1,no_repeat/1,const/1,rand_strategy/1,enum/1,cycle/1,rand/1,val/1,tournament/2]).
 
 
 %
@@ -16,10 +16,18 @@ play_two(StrategyL,StrategyR,N) ->
 % REPLACE THE dummy DEFINITIONS
 
 play_two(_,_,PlaysL,PlaysR,0) ->
-   dummy;
+   Result = lists:foldr(fun (X,Y) -> X + Y end, 0, lists:zipwith(fun (X,Y) -> outcome(result(X,Y)) end, PlaysL, PlaysR)),
+   if
+     Result < 0 ->
+       io:format("Result: Player 1 loses with ~p~n", [Result]);
+     Result > 0 ->
+       io:format("Result: Player 1 wins with ~p~n", [Result]);
+     true ->
+       io:format("Result: Draw between Player 1 and Player 2")
+   end;
 
 play_two(StrategyL,StrategyR,PlaysL,PlaysR,N) ->
-   dummy.
+   play_two(StrategyL, StrategyR, [StrategyL(PlaysR)|PlaysL], [StrategyR(PlaysL)|PlaysR], N - 1).
 
 %
 % interactively play against a strategy, provided as argument.
@@ -121,9 +129,9 @@ rock(_) ->
 % REPLACE THE dummy DEFINITIONS
 
 no_repeat([]) ->
-    dummy;
+    scissors;
 no_repeat([X|_]) ->
-    dummy.
+    beats(X).
 
 const(Play) ->
     dummy.
@@ -132,4 +140,10 @@ cycle(Xs) ->
     dummy.
 
 rand(_) ->
-    dummy.
+    enum(rand:uniform(3) - 1).
+
+rand_strategy(X) ->
+  Strategies = [fun echo/1, fun rock/1, fun no_repeat/1, fun rand/1],
+  Strat = lists:nth(rand:uniform(length(Strategies)), Strategies),
+  Strat(X).
+
