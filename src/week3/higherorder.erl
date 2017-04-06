@@ -29,11 +29,13 @@ zip(_, []) ->
 zip([X1|Xs1], [X2|Xs2]) ->
   [ {X1, X2} | zip(Xs1, Xs2) ].
 
-zip_with_map(_Fun, []) ->
-  [];
-zip_with_map(Fun, [{X,Y}|Xs]) ->
-  [Fun(X, Y) | zip_with_map(Fun, Xs)].
+%zip_with1(_Fun, [], _List2) ->
+%  [];
+%zip_with1(_Fun, _List1, []) ->
+%  [];
+%zip_with1(Fun, [X|Xs], [Y|Ys]) ->
+%  [Fun(X, Y) | zip_with1(Fun, Xs, Ys)].
 
-zip_with(Fun, List1, List2) ->
-  zip_with_map(Fun, zip(List1, List2)).
+zip_with(Fun, Xs, Ys) ->
+  map(fun ({X,Y}) -> Fun(X,Y) end, zip(Xs, Ys)).
 
