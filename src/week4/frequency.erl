@@ -29,8 +29,8 @@ loop(Frequencies) ->
       Pid ! {reply, Reply},
       loop(NewFrequencies);
     {request, Pid , {deallocate, Freq}} ->
-      NewFrequencies = deallocate(Frequencies, Freq),
-      Pid ! {reply, ok},
+      {NewFrequencies, Reply} = deallocate(Frequencies, Freq, Pid),
+      Pid ! {reply, Reply},
       loop(NewFrequencies);
     {request, Pid, stop} ->
       Pid ! {reply, stopped}
@@ -42,8 +42,17 @@ loop(Frequencies) ->
 allocate({[], Allocated}, _Pid) ->
   {{[], Allocated}, {error, no_frequency}};
 allocate({[Freq|Free], Allocated}, Pid) ->
-  {{Free, [{Freq, Pid}|Allocated]}, {ok, Freq}}.
+  case lists:any(fun({_UsedFreq,PidUser}) -> Pid =:= PidUser end, Allocated) of
+    true -> {{[Freq|Free], Allocated}, {error, has_frequency}};
+    false -> {{Free, [{Freq, Pid}|Allocated]}, {ok, Freq}}
+  end.
 
-deallocate({Free, Allocated}, Freq) ->
-  NewAllocated=lists:keydelete(Freq, 1, Allocated),
-  {[Freq|Free],  NewAllocated}.
+deallocate({Free, Allocated}, Freq, Pid) ->
+  case lists:keyfind(Freq, 1, Allocated) of
+    false -> {{Free, Allocated}, {error, freq_not_reserved}};
+    {Freq,Pid} -> 
+      NewAllocated=lists:keydelete(Freq, 1, Allocated),
+      {{[Freq|Free],  NewAllocated}, {ok, ok}};
+    _ -> {{Free, Allocated}, {error, not_owning_frequency}}
+  end.
+
