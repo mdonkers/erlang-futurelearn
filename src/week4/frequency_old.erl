@@ -7,19 +7,15 @@
 %%   (c) Francesco Cesarini and Simon Thompson
 
 -module(frequency).
--export([start/0,allocate/0,deallocate/1,stop/0]).
--export([init/0]).
+-export([init/0, loop/1]).
 
 %% These are the start functions used to create and
 %% initialize the server.
 
-start() ->
-    register(frequency,
-	     spawn(frequency, init, [])).
-
 init() ->
   Frequencies = {get_frequencies(), []},
-  loop(Frequencies).
+  % loop(Frequencies).
+  register(frequency, spawn(frequency, loop, [Frequencies])).
 
 % Hard Coded
 get_frequencies() -> [10,11,12,13,14,15].
@@ -33,33 +29,12 @@ loop(Frequencies) ->
       Pid ! {reply, Reply},
       loop(NewFrequencies);
     {request, Pid , {deallocate, Freq}} ->
-      NewFrequencies = deallocate(Frequencies, Freq),
-      Pid ! {reply, ok},
+      {NewFrequencies, Reply} = deallocate(Frequencies, Pid, Freq),
+      Pid ! {reply, Reply},
       loop(NewFrequencies);
     {request, Pid, stop} ->
       Pid ! {reply, stopped}
   end.
-
-%% Functional interface
-
-allocate() -> 
-    frequency ! {request, self(), allocate},
-    receive 
-	    {reply, Reply} -> Reply
-    end.
-
-deallocate(Freq) -> 
-    frequency ! {request, self(), {deallocate, Freq}},
-    receive 
-	    {reply, Reply} -> Reply
-    end.
-
-stop() -> 
-    frequency ! {request, self(), stop},
-    receive 
-	    {reply, Reply} -> Reply
-    end.
-
 
 %% The Internal Help Functions used to allocate and
 %% deallocate frequencies.
@@ -67,8 +42,19 @@ stop() ->
 allocate({[], Allocated}, _Pid) ->
   {{[], Allocated}, {error, no_frequency}};
 allocate({[Freq|Free], Allocated}, Pid) ->
-  {{Free, [{Freq, Pid}|Allocated]}, {ok, Freq}}.
+  case lists:any(fun({_UsedFreq,PidUser}) -> Pid =:= PidUser end, Allocated) of
+    true ->
+      {{[Freq|Free], Allocated}, {error, has_frequency}};
+    false ->
+      {{Free, [{Freq, Pid}|Allocated]}, {ok, Freq}}
+  end.
 
-deallocate({Free, Allocated}, Freq) ->
-  NewAllocated=lists:keydelete(Freq, 1, Allocated),
-  {[Freq|Free],  NewAllocated}.
+deallocate({Free, Allocated}, Pid, Freq) ->
+  case lists:keyfind(Freq, 1, Allocated) of
+    {Freq,Pid} ->
+      NewAllocated=lists:keydelete(Freq, 1, Allocated),
+      {{[Freq|Free],  NewAllocated}, {ok, ok}};
+    _ ->
+      {{Free, Allocated}, {error, not_owning_frequency}}
+  end.
+

@@ -7,15 +7,19 @@
 %%   (c) Francesco Cesarini and Simon Thompson
 
 -module(frequency).
--export([init/0, loop/1]).
+-export([start/0,allocate/0,deallocate/1,stop/0,clear/0]).
+-export([init/0]).
 
 %% These are the start functions used to create and
 %% initialize the server.
 
+start() ->
+    register(frequency,
+	     spawn(frequency, init, [])).
+
 init() ->
   Frequencies = {get_frequencies(), []},
-  % loop(Frequencies).
-  register(frequency, spawn(frequency, loop, [Frequencies])).
+  loop(Frequencies).
 
 % Hard Coded
 get_frequencies() -> [10,11,12,13,14,15].
@@ -24,17 +28,60 @@ get_frequencies() -> [10,11,12,13,14,15].
 
 loop(Frequencies) ->
   receive
-    {request, Pid, allocate} ->
+    {request, Pid, Tag, allocate} ->
+      timer:sleep(5000),
       {NewFrequencies, Reply} = allocate(Frequencies, Pid),
-      Pid ! {reply, Reply},
+      Pid ! {reply, Tag, Reply},
       loop(NewFrequencies);
-    {request, Pid , {deallocate, Freq}} ->
-      {NewFrequencies, Reply} = deallocate(Frequencies, Pid, Freq),
-      Pid ! {reply, Reply},
+    {request, Pid , Tag, {deallocate, Freq}} ->
+      timer:sleep(5000),
+      NewFrequencies = deallocate(Frequencies, Freq),
+      Pid ! {reply, Tag, ok},
       loop(NewFrequencies);
-    {request, Pid, stop} ->
-      Pid ! {reply, stopped}
+    {request, Pid, Tag, clear} ->
+      clear_mailbox(),
+      Pid ! {reply, Tag, cleared},
+      loop(Frequencies);
+    {request, Pid, Tag, stop} ->
+      Pid ! {reply, Tag, stopped}
   end.
+
+%% Functional interface
+
+allocate() -> 
+    clear_mailbox(),
+    Tag = make_ref(),
+    frequency ! {request, self(), Tag, allocate},
+    receive 
+	    {reply, Tag, Reply} -> Reply
+    after 1000 ->
+            timeout
+    end.
+
+deallocate(Freq) -> 
+    clear_mailbox(),
+    Tag = make_ref(),
+    frequency ! {request, self(), Tag, {deallocate, Freq}},
+    receive 
+	    {reply, Tag, Reply} -> Reply
+    after 1000 ->
+            timeout
+    end.
+
+stop() -> 
+    Tag = make_ref(),
+    frequency ! {request, self(), Tag, stop},
+    receive 
+	    {reply, Tag, Reply} -> Reply
+    end.
+
+clear() ->
+    Tag = make_ref(),
+    frequency ! {request, self(), Tag, clear},
+    receive
+              {reply, Tag, Reply} -> Reply
+    end.
+
 
 %% The Internal Help Functions used to allocate and
 %% deallocate frequencies.
@@ -42,19 +89,16 @@ loop(Frequencies) ->
 allocate({[], Allocated}, _Pid) ->
   {{[], Allocated}, {error, no_frequency}};
 allocate({[Freq|Free], Allocated}, Pid) ->
-  case lists:any(fun({_UsedFreq,PidUser}) -> Pid =:= PidUser end, Allocated) of
-    true ->
-      {{[Freq|Free], Allocated}, {error, has_frequency}};
-    false ->
-      {{Free, [{Freq, Pid}|Allocated]}, {ok, Freq}}
-  end.
+  {{Free, [{Freq, Pid}|Allocated]}, {ok, Freq}}.
 
-deallocate({Free, Allocated}, Pid, Freq) ->
-  case lists:keyfind(Freq, 1, Allocated) of
-    {Freq,Pid} ->
-      NewAllocated=lists:keydelete(Freq, 1, Allocated),
-      {{[Freq|Free],  NewAllocated}, {ok, ok}};
-    _ ->
-      {{Free, Allocated}, {error, not_owning_frequency}}
+deallocate({Free, Allocated}, Freq) ->
+  NewAllocated=lists:keydelete(Freq, 1, Allocated),
+  {[Freq|Free],  NewAllocated}.
+
+clear_mailbox() ->
+  receive
+    _Msg -> io:format("Removed one msg~n"), clear_mailbox()
+  after 0 ->
+    io:format("Finished clearing mailbox~n")
   end.
 
