@@ -27,23 +27,34 @@ get_frequencies() -> [10,11,12,13,14,15].
 %% The Main Loop
 
 loop(Frequencies) ->
+  % First receive high-prio messages
   receive
-    {request, Pid, Tag, allocate} ->
-      timer:sleep(5000),
-      {NewFrequencies, Reply} = allocate(Frequencies, Pid),
-      Pid ! {reply, Tag, Reply},
-      loop(NewFrequencies);
-    {request, Pid , Tag, {deallocate, Freq}} ->
-      timer:sleep(5000),
-      NewFrequencies = deallocate(Frequencies, Freq),
-      Pid ! {reply, Tag, ok},
-      loop(NewFrequencies);
     {request, Pid, Tag, clear} ->
       clear_mailbox(),
       Pid ! {reply, Tag, cleared},
       loop(Frequencies);
     {request, Pid, Tag, stop} ->
       Pid ! {reply, Tag, stopped}
+  after 0 ->
+    % Receive normal messages
+    receive
+      {request, Pid, Tag, allocate} ->
+        timer:sleep(5000),
+        {NewFrequencies, Reply} = allocate(Frequencies, Pid),
+        Pid ! {reply, Tag, Reply},
+        loop(NewFrequencies);
+      {request, Pid , Tag, {deallocate, Freq}} ->
+        timer:sleep(5000),
+        NewFrequencies = deallocate(Frequencies, Freq),
+        Pid ! {reply, Tag, ok},
+        loop(NewFrequencies);
+      {request, Pid, Tag, clear} ->
+        clear_mailbox(),
+        Pid ! {reply, Tag, cleared},
+        loop(Frequencies);
+      {request, Pid, Tag, stop} ->
+        Pid ! {reply, Tag, stopped}
+    end
   end.
 
 %% Functional interface
@@ -55,7 +66,8 @@ allocate() ->
     receive 
 	    {reply, Tag, Reply} -> Reply
     after 1000 ->
-            timeout
+            clear(),
+            timeout_client
     end.
 
 deallocate(Freq) -> 
@@ -65,7 +77,8 @@ deallocate(Freq) ->
     receive 
 	    {reply, Tag, Reply} -> Reply
     after 1000 ->
-            timeout
+            clear(),
+            timeout_client
     end.
 
 stop() -> 
@@ -77,10 +90,7 @@ stop() ->
 
 clear() ->
     Tag = make_ref(),
-    frequency ! {request, self(), Tag, clear},
-    receive
-              {reply, Tag, Reply} -> Reply
-    end.
+    frequency ! {request, self(), Tag, clear}.
 
 
 %% The Internal Help Functions used to allocate and
@@ -97,7 +107,7 @@ deallocate({Free, Allocated}, Freq) ->
 
 clear_mailbox() ->
   receive
-    _Msg -> io:format("Removed one msg~n"), clear_mailbox()
+    Msg -> io:format("Removed one msg: ~p~n",[Msg]), clear_mailbox()
   after 0 ->
     io:format("Finished clearing mailbox~n")
   end.
