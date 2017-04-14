@@ -6,7 +6,7 @@
 %%   http://www.erlangprogramming.org/
 %%   (c) Francesco Cesarini and Simon Thompson
 
--module(frequency).
+-module(frequency_old).
 -export([init/0, loop/1]).
 
 %% These are the start functions used to create and
@@ -15,7 +15,7 @@
 init() ->
   Frequencies = {get_frequencies(), []},
   % loop(Frequencies).
-  register(frequency, spawn(frequency, loop, [Frequencies])).
+  register(frequency_old, spawn(frequency_old, loop, [Frequencies])).
 
 % Hard Coded
 get_frequencies() -> [10,11,12,13,14,15].
