@@ -8,7 +8,8 @@
 
 -module(frequency).
 -export([start/0,allocate/0,deallocate/1,stop/0]).
--export([init/0]).
+-export([init/0,loop/1]).
+%-export([inject/1]).
 
 %% These are the start functions used to create and
 %% initialize the server.
@@ -28,19 +29,30 @@ get_frequencies() -> [10,11,12,13,14,15].
 
 loop(Frequencies) ->
   receive
+%    {request, Pid, {inject, Freqs}} ->
+%      NewFrequencies = inject(Frequencies, Freqs),
+%      Pid ! {reply, ok},
+%      frequency:loop(NewFrequencies);
     {request, Pid, allocate} ->
       {NewFrequencies, Reply} = allocate(Frequencies, Pid),
       Pid ! {reply, Reply},
-      loop(NewFrequencies);
+      frequency:loop(NewFrequencies);
     {request, Pid , {deallocate, Freq}} ->
       NewFrequencies = deallocate(Frequencies, Freq),
       Pid ! {reply, ok},
-      loop(NewFrequencies);
+      frequency:loop(NewFrequencies);
     {request, Pid, stop} ->
       Pid ! {reply, stopped}
+  after 1000 -> frequency:loop(Frequencies)
   end.
 
 %% Functional interface
+
+%inject(Freqs) ->
+%  frequency ! {request, self(), {inject, Freqs}},
+%  receive
+%    {reply, Reply} -> Reply
+%  end.
 
 allocate() -> 
     frequency ! {request, self(), allocate},
@@ -63,6 +75,9 @@ stop() ->
 
 %% The Internal Help Functions used to allocate and
 %% deallocate frequencies.
+
+inject({Frequencies, Allocated}, AddFreqs) ->
+  {Frequencies ++ AddFreqs, Allocated}.
 
 allocate({[], Allocated}, _Pid) ->
   {{[], Allocated}, {error, no_frequency}};
